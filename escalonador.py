@@ -81,7 +81,7 @@ class Scheduler:
     def get_process_status(self, order):
         return self.process_list[order].status
 
-    def set_availability(self):  # for processor and 1 device
+    def set_availability(self):  # for current processor and 1 device
         for i in range(len(self.process_list)):
             if self.get_process_status(i) == executando:
                 self.processor_available = False
@@ -107,51 +107,47 @@ class Scheduler:
 
             if self.processor_available:
 
-                if self.get_process_status(i) == apto:
+                if self.process_list[i].status == apto:
                     if self.process_list[i].tStart > 0:
                         self.process_list[i].status = executando
                         self.process_list[i].tStart -= 1
-                        self.pid_has_processor = i  # ganhou o processador
-                    elif self.process_list[i].tDevice == 0 and self.process_list[i].tEnd > 0:
-                        self.process_list[i].status = executando
-                        self.process_list[i].tEnd -= 1
-                        self.pid_has_processor = i  # ganhou o processador
+                        self.pid_has_processor = i  # ganhou o processador  # DEVE PASSAR PRA OUTRO i
+                    elif self.process_list[i].tDevice > 0:
+                        if self.device_available:
+                            self.process_list[i].status = dispositivo
+                            self.pid_has_device = i  # ganhou o dispositivo  # DEVE PASSAR PRA OUTRO i
+                            self.process_list[i].tDevice -= 1
+                        else:  # se nao tem device disponivel, entao não é dele, já que ele agora é apto
+                            self.process_list[i].status = bloqueado  # DEVE PASSAR PRA OUTRO i
+                    else:
+                        if self.process_list[i].tEnd > 0:
+                            self.process_list[i].status = executando
+                            self.process_list[i].tEnd -= 1
+                            self.pid_has_processor = i  # ganhou o processador  # DEVE PASSAR PRA OUTRO i
+                        else:
+                            self.process_list[i].status = fim
 
-                if self.process_list[i].status == dispositivo:
-                    if self.process_list[i].tDevice > 0:
-                        self.pid_has_device = i  # ganhou o dispositivo  #todo: e na proxima já deve usar dispositivo ou ficar bloqueado
-                        self.process_list[i].tDevice -= 1
-                    elif self.pid_has_device == i:  # dispositivo em uso pelo processo atual
-                        # permanece status dispositivo
-                        self.process_list[i].tDevice -= 1
-                    else:  # muda para bloqueado e tenta na proxima
-                        self.process_list[i].status = bloqueado
+
+
+            elif self.process_list[i].status == executando:
+                if self.ts_counter < self.ts:  # ainda tem TS
+                    if self.process_list[i].tStart > 0:
+                        self.process_list[i].tStart -= 1  # DEVE PASSAR PRA OUTRO i
+                    elif self.process_list[i].tDevice > 0 and self.process_list[i].tStart == 0:  # todo: device nada a ver com tstart q acabou
+                        if self.device_available:
+                            self.process_list[i].status = dispositivo
+                            self.pid_has_device = i  # ganhou o dispositivo  # DEVE PASSAR PRA OUTRO i
+                            self.process_list[i].tDevice -= 1
+                        else:  # se nao tem device disponivel, entao não é dele, já que ele agora é apto
+                            self.process_list[i].status = bloqueado  # DEVE PASSAR PRA OUTRO i
+                    elif self.process_list[i].tEnd > 0 and self.process_list[i].tStart == 0:
+                        self.process_list[i].tEnd -= 1  # DEVE PASSAR PRA OUTRO i
+                    else:
+                        self.process_list[i].status = fim
                 else:
                     self.process_list[i].status = apto
-                    self.pid_has_device = None  # liberou o dispositivo
-
-
-            elif self.get_process_status(i) == executando:  # o current_id já é o seu
-                if self.process_list[i].tStart > 0:
-                    if self.ts_counter < self.ts:
-                        # self.process_list[i].status = executando  # já está executando
-                        self.process_list[i].tStart -= 1
-                    else:  # finalizou TS
-                        self.process_list[i].status = apto  # todo: implementar outros status?
-                        self.pid_has_processor = None  # perdeu o processador
-
-                elif self.process_list[i].tStart == 0:
-                    self.process_list[i].status = apto  # todo: implementar outros status?
                     self.pid_has_processor = None  # liberou o processador
 
-                elif self.process_list[i].tDevice == 0 and self.process_list[i].tEnd > 0:
-                    if self.ts_counter < self.ts:
-                        self.process_list[i].status = executando
-                        self.process_list[i].tEnd -= 1
-                    else:  # finalizou TS
-                        self.process_list[i].status = fim  # todo: implementar outros status? ou Fim?
-                        self.pid_has_processor = None  # perdeu o processador
-            # self.set_availability()
             if self.process_list[i].status in [apto, bloqueado, dispositivo]:
                 if self.process_list[i].tStart == 0:
                     if self.process_list[i].tDevice > 0:
@@ -170,48 +166,74 @@ class Scheduler:
 
 
 
-            # if self.process_list[i].status == apto:
-            #     if self.process_list[i].tStart > 0 and self.processor_available:
-            #         self.process_list[i].status = executando
-            #         self.process_list[i].tStart -= 1
-            #         self.pid_has_processor = i  # ganhou o processador  # DEVE PASSAR PRA OUTRO i
-            #     elif self.process_list[i].tDevice > 0 and self.process_list[i].tStart == 0:
-            #         if self.device_available:
-            #             self.process_list[i].status = dispositivo
-            #             self.pid_has_device = i  # ganhou o dispositivo  # DEVE PASSAR PRA OUTRO i
-            #             self.process_list[i].tDevice -= 1
-            #         else:  # se nao tem device disponivel, entao não é dele, já que ele agora é apto
-            #             self.process_list[i].status = bloqueado  # DEVE PASSAR PRA OUTRO i
-            #     else:
-            #         if self.process_list[i].tEnd > 0 and self.processor_available and self.process_list[i].tStart == 0:
+
+
+
+
+
+
+            # if self.processor_available:
+            #
+            #     if self.get_process_status(i) == apto:
+            #         if self.process_list[i].tStart > 0:
+            #             self.process_list[i].status = executando
+            #             self.process_list[i].tStart -= 1
+            #             self.pid_has_processor = i  # ganhou o processador
+            #         elif self.process_list[i].tDevice == 0 and self.process_list[i].tEnd > 0:
             #             self.process_list[i].status = executando
             #             self.process_list[i].tEnd -= 1
-            #             self.pid_has_processor = i  # ganhou o processador  # DEVE PASSAR PRA OUTRO i
-            #         else:
-            #             self.process_list[i].status = fim
+            #             self.pid_has_processor = i  # ganhou o processador
             #
-            # elif self.process_list[i].status == executando:
-            #     if self.ts_counter < self.ts:  # ainda tem TS
-            #         if self.process_list[i].tStart > 0:
-            #             self.process_list[i].tStart -= 1  # DEVE PASSAR PRA OUTRO i
-            #         elif self.process_list[i].tDevice > 0 and self.process_list[i].tStart == 0:  # todo: device nada a ver com tstart q acabou
-            #             if self.device_available:
-            #                 self.process_list[i].status = dispositivo
-            #                 self.pid_has_device = i  # ganhou o dispositivo  # DEVE PASSAR PRA OUTRO i
-            #                 self.process_list[i].tDevice -= 1
-            #             else:  # se nao tem device disponivel, entao não é dele, já que ele agora é apto
-            #                 self.process_list[i].status = bloqueado  # DEVE PASSAR PRA OUTRO i
-            #         elif self.process_list[i].tEnd > 0 and self.process_list[i].tStart == 0:
-            #             self.process_list[i].tEnd -= 1  # DEVE PASSAR PRA OUTRO i
-            #         else:
-            #             self.process_list[i].status = fim
+            #     if self.process_list[i].status == dispositivo:
+            #         if self.process_list[i].tDevice > 0:
+            #             self.pid_has_device = i  # ganhou o dispositivo  #todo: e na proxima já deve usar dispositivo ou ficar bloqueado
+            #             self.process_list[i].tDevice -= 1
+            #         elif self.pid_has_device == i:  # dispositivo em uso pelo processo atual
+            #             # permanece status dispositivo
+            #             self.process_list[i].tDevice -= 1
+            #         else:  # muda para bloqueado e tenta na proxima
+            #             self.process_list[i].status = bloqueado
             #     else:
             #         self.process_list[i].status = apto
+            #         self.pid_has_device = None  # liberou o dispositivo
+            #
+            #
+            # elif self.get_process_status(i) == executando:  # o current_id já é o seu
+            #     if self.process_list[i].tStart > 0:
+            #         if self.ts_counter < self.ts:
+            #             # self.process_list[i].status = executando  # já está executando
+            #             self.process_list[i].tStart -= 1
+            #         else:  # finalizou TS
+            #             self.process_list[i].status = apto  # todo: implementar outros status?
+            #             self.pid_has_processor = None  # perdeu o processador
+            #
+            #     elif self.process_list[i].tStart == 0:
+            #         self.process_list[i].status = apto  # todo: implementar outros status?
             #         self.pid_has_processor = None  # liberou o processador
-
-
-
-
+            #
+            #     elif self.process_list[i].tDevice == 0 and self.process_list[i].tEnd > 0:
+            #         if self.ts_counter < self.ts:
+            #             self.process_list[i].status = executando
+            #             self.process_list[i].tEnd -= 1
+            #         else:  # finalizou TS
+            #             self.process_list[i].status = fim  # todo: implementar outros status? ou Fim?
+            #             self.pid_has_processor = None  # perdeu o processador
+            # # self.set_availability()
+            # if self.process_list[i].status in [apto, bloqueado, dispositivo]:
+            #     if self.process_list[i].tStart == 0:
+            #         if self.process_list[i].tDevice > 0:
+            #             if self.device_available:
+            #                 self.process_list[i].status = dispositivo
+            #                 self.pid_has_device = i  # ganhou o dispositivo  #todo: e na proxima já deve usar dispositivo ou ficar bloqueado
+            #                 self.process_list[i].tDevice -= 1
+            #             elif self.pid_has_device == i:  # dispositivo em uso pelo processo atual
+            #                 # permanece status dispositivo
+            #                 self.process_list[i].tDevice -= 1
+            #             else:  # muda para bloqueado e tenta na proxima
+            #                 self.process_list[i].status = bloqueado
+            #         else:
+            #             self.process_list[i].status = apto
+            #             self.pid_has_device = None  # liberou o dispositivo
 
         if not self.processor_available:
             self.ts_counter += 1
@@ -230,11 +252,14 @@ class Scheduler:
             self.clock()
 
 
-p1 = Process(0, 3, 4, 2, apto)
-p2 = Process(1, 2, 5, 1, apto)
-p3 = Process(2, 3, 3, 2, apto)
+# p1 = Process(0, 3, 4, 2, apto)
+# p2 = Process(1, 2, 5, 1, apto)
+# p3 = Process(2, 3, 3, 2, apto)
+p1 = Process(0, 0, 1, 1, apto)
+p2 = Process(1, 0, 0, 0, apto)
+p3 = Process(2, 1, 0, 0, apto)
 lista_de_processos = [p1, p2, p3]
-time_slice = 1
+time_slice = 2
 s = Scheduler(1, time_slice, lista_de_processos)
 #print(s)
 s.run()
