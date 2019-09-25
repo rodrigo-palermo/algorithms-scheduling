@@ -21,6 +21,21 @@ class Process:
         return '{:2}{:3}{:2}{:2} '.format(self.id, self.tStart, self.tDevice, self.tEnd)
 
 
+class Fila:
+
+    def __init__(self):
+        self.fila = []
+
+    def insere(self, valor):
+        self.fila.append(valor)
+
+    def retira(self):
+        self.fila.pop()
+
+    def __repr__(self):
+        print(self.fila)
+
+
 class Scheduler:
 
     def __init__(self, id, ts, process_list):
@@ -240,7 +255,7 @@ class Scheduler:
 
 
     def run(self):
-        while self.current_time <= 17:
+        while self.current_time <= 30:
 
             self.execute()
             self.set_scheduler_timeline()
@@ -252,12 +267,12 @@ class Scheduler:
             self.clock()
 
 
-# p1 = Process(0, 3, 4, 2, apto)
-# p2 = Process(1, 2, 5, 1, apto)
-# p3 = Process(2, 3, 3, 2, apto)
-p1 = Process(0, 0, 1, 1, apto)
-p2 = Process(1, 0, 0, 0, apto)
-p3 = Process(2, 1, 0, 0, apto)
+p1 = Process(0, 3, 4, 2, apto)
+p2 = Process(1, 2, 5, 1, apto)
+p3 = Process(2, 3, 3, 2, apto)
+# p1 = Process(0, 0, 1, 1, apto)
+# p2 = Process(1, 0, 0, 0, apto)
+# p3 = Process(2, 1, 0, 0, apto)
 lista_de_processos = [p1, p2, p3]
 time_slice = 2
 s = Scheduler(1, time_slice, lista_de_processos)
@@ -267,3 +282,9 @@ s.run()
 print(p1)
 print(s.process_list[0])
 print(s.process_list[0].tStart)
+
+fila_pid_aptos = Fila()
+fila_pid_aptos.insere(10)
+fila_pid_aptos.insere(20)
+fila_pid_aptos.retira()
+print(fila_pid_aptos)
