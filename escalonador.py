@@ -81,6 +81,7 @@ class Scheduler:
         self.current_time = 0
         # self.processor_available = True
         # self.device_available = True  # todo: implement device class
+        self.log = []
         self.timeline = []
         self.process_timeline = []
         for i in range(len(self.pcb)):
@@ -103,9 +104,13 @@ class Scheduler:
         # Fila de PID para uso em fila de PID DEVICE
         self.fila_pid_devc = Fila()
 
+        # Fila de PID para uso em fila de PID FINALIZADO
+        self.fila_pid_finalizado = Fila()
+
     def __str__(self):
-        text = 'Escalonador: {}\n'.format(self.id)
-        text += 'Pid T D T\n'
+        text = 'Escalonador: {}'.format(self.id)
+        text += '\n TS: {}'.format(self.ts)
+        text += '\nPid T D T\n'
         row = 0
         for process in self.pcb:
             # print process
@@ -134,10 +139,17 @@ class Scheduler:
         text += '\n FILA DE PID  EXEC: ' + str(self.fila_pid_exec)
         text += '\n FILA DE PID  BLOQ: ' + str(self.fila_pid_bloq)
         text += '\n FILA DE PID  DEVC: ' + str(self.fila_pid_devc)
+        # TESTES
+        text += '\n FILA DE PID   FIM: ' + str(self.fila_pid_finalizado)
+        text += '\n        TS counter: ' + str(self.ts_counter)
 
         text += '\n-------------------------------------------------\n'
 
         return text
+
+    def keep_log(self, txt):
+        self.log.append(txt)
+
 
     def init_fila_pid_livre(self, pcb):
         # Fila de PID para uso em fila de PID LIVRE
@@ -191,23 +203,30 @@ class Scheduler:
             # 2-TROCA E REINICIA TS: se tem TS, mas processo não tem tempo pra executar
                 # 2-1 reinicia TS
                 # 2-2 Se não tem tempo tStart e tEnd - finaliza processo?
-            elif not process.tem_tStart() and not process.tem_tEnd():
-                self.ts_counter = 0
-                self.fila_pid_exec.sai()
+            #elif not process.tem_tStart() and not process.tem_tEnd():
+            else:
+                self.ts_counter = 0  # reinicia contador do TS
+                self.fila_pid_exec.sai()  # libera o processador
                 if process.finalizou_processo():  # nao tem tDevice
                     process.status = fim
+                    self.fila_pid_finalizado.entra(pid)
                 else:  # ainda tem tDevice
                     self.fila_pid_apto.entra(pid)
                     process.status = apto
+                self.set_fila_pid_exec()  # RECURSIVIDADE !? Agora já saiu da própria funçõa. Já deve executar próximo da lista de apto, se não vazia. NECESSARIO aqui ou só embaixo? Necessário, senao CPU fica ociosa
 
         #3-TROCA e REINICIA TS: se não tem TS, independente se processo ter tempo pra executar
             #3-1 reinicia TS
             #3-2 processo vai para fila_APTO
         else: # acabou TS
-            self.ts_counter = 0 # reinicia contador do TS
+            self.ts_counter = 0  # reinicia contador do TS
             self.fila_pid_exec.sai()  # libera o processador
-            self.fila_pid_apto.entra(pid)
-            process.status = apto
+            if process.finalizou_processo():  # nao tem tDevice
+                process.status = fim
+                self.fila_pid_finalizado.entra(pid)
+            else:  # ainda tem tDevice
+                self.fila_pid_apto.entra(pid)
+                process.status = apto
             self.set_fila_pid_exec()  # RECURSIVIDADE !? Agora já saiu da própria funçõa. Já deve executar próximo da lista de apto, se não vazia.
 
     def set_fila_pid_devc(self):  #todo implementar
@@ -255,8 +274,9 @@ class Scheduler:
             self.set_fila_pid_devc()
             self.set_scheduler_timeline()
             self.set_process_timeline()
-            # print per time unit
+            # print or keep log per time unit
             print(self)
+            self.keep_log(self.__str__())
 
             self.clock()
 
@@ -274,6 +294,11 @@ p2 = Process(4, 0, 0, 0)
 p3 = Process(5, 1, 0, 0)
 lista_de_processos_cenario_02 = [p1, p2, p3]
 
+#Cenario 03
+p1 = Process(1, 3, 0, 2)
+p2 = Process(2, 2, 0, 1)
+p3 = Process(3, 3, 0, 2)
+lista_de_processos_cenario_03 = [p1, p2, p3]
 
 # TIME SLICE
 time_slice_2 = 2
@@ -282,12 +307,16 @@ time_slice_4 = 4
 # ESCALONADOR
 s1 = Scheduler(1, time_slice_2, lista_de_processos_cenario_01)
 s2 = Scheduler(2, time_slice_4, lista_de_processos_cenario_02)
+s3 = Scheduler(3, time_slice_2, lista_de_processos_cenario_03)
 
 # EXECUTAR O PROGRAMA
 
-s1.run()
+# s1.run()
 print("\n\n=============================================================\n\n")
-s2.run()
+#s2.run()
+
+s3.run()
+print(s3.log[MAX_TIME])
 
 
 #testes
