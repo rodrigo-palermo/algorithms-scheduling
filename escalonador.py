@@ -1,13 +1,39 @@
 import os
 
-# variaveis dos processos
+# VARIÁVEIS GLOBAIS DOS PROCESSOS
 executando = 'x'
 apto = '.'
 dispositivo = 'd'
 bloqueado = 'b'
 fim = ' '
 
+# VARIÁVEIS GLOBAIS DOS ESCALONADOR
 MAX_TIME = 20
+
+# CLASSES
+
+
+class Fila:
+
+    def __init__(self):
+        self.fila = []
+
+    def entra(self, valor):
+        self.fila.append(valor)
+
+    def sai(self):
+        self.fila.pop(0)
+
+    def len(self):
+        return len(self.fila)
+
+    def first(self):
+        if len(self.fila) > 0:
+            return self.fila[0]
+        return None
+
+    def __str__(self):
+        return str(self.fila)
 
 
 class Process:
@@ -43,41 +69,18 @@ class Process:
         return False
 
 
-class Fila:
-
-    def __init__(self):
-        self.fila = []
-
-    def entra(self, valor):
-        self.fila.append(valor)
-
-    def sai(self):
-        self.fila.pop(0)
-
-    def len(self):
-        return len(self.fila)
-
-    def first(self):
-        if len(self.fila) > 0:
-            return self.fila[0]
-        return None
-
-    def __str__(self):
-        return str(self.fila)
-
-
 class Scheduler:
 
     def __init__(self, id, ts, pcb):
-        self.pid_has_processor = None
-        self.pid_has_device = None
+        # self.pid_has_processor = None
+        # self.pid_has_device = None
         self.id = id
         self.ts = ts
         self.ts_counter = 0
         self.pcb = pcb
         self.current_time = 0
-        self.processor_available = True
-        self.device_available = True  # todo: implement device class
+        # self.processor_available = True
+        # self.device_available = True  # todo: implement device class
         self.timeline = []
         self.process_timeline = []
         for i in range(len(self.pcb)):
@@ -119,11 +122,11 @@ class Scheduler:
             text += ' {}'.format(t % 10)
 
         # print availability
-        text += '\n      proc'
-        text += ' {}'.format('s' if self.processor_available else 'n')
-
-        text += '\n      devc'
-        text += ' {}'.format('s' if self.device_available else 'n')
+        # text += '\n      proc'
+        # text += ' {}'.format('s' if self.processor_available else 'n')
+        #
+        # text += '\n      devc'
+        # text += ' {}'.format('s' if self.device_available else 'n')
 
         #print FILAS
         text += '\n FILA DE PID LIVRE: ' + str(self.fila_pid_livre)
@@ -142,22 +145,6 @@ class Scheduler:
         for i in range(len(pcb)):
             fila_pid.entra(pcb[i].id)
         return fila_pid
-
-    # def set_fila_pid_apto(self):  # loop
-    #     for i in range(self.fila_pid_livre.len()):
-    #         pid = self.fila_pid_livre.first()
-    #         process = self.get_process_by_pid(pid)
-    #         if process.tStart > 0 or process.tEnd > 0:
-    #             self.fila_pid_livre.sai()
-    #             self.fila_pid_apto.entra(pid)
-
-    # def set_fila_pid_apto(self):  # considera que aptos são somente para processador,e não devc. Para devc irá direto para fila correspondente
-    #     if self.fila_pid_livre.len() > 0:
-    #         pid = self.fila_pid_livre.first()
-    #         process = self.get_process_by_pid(pid)
-    #         if process.tStart > 0 or process.tEnd > 0:
-    #             self.fila_pid_livre.sai()
-    #             self.fila_pid_apto.entra(pid)
 
     def set_fila_pid_apto(self):  # considera que aptos são para uso do processador ou device
         if self.fila_pid_livre.len() > 0:
@@ -183,7 +170,6 @@ class Scheduler:
                             process.tStart -= 1  # decrementa tStart
                         elif process.tem_tEnd():
                             process.tEnd -= 1  # decrementa tEnd
-
 
         else:  # processador executando
             pid = self.fila_pid_exec.first()
@@ -224,7 +210,6 @@ class Scheduler:
             process.status = apto
             self.set_fila_pid_exec()  # RECURSIVIDADE !? Agora já saiu da própria funçõa. Já deve executar próximo da lista de apto, se não vazia.
 
-
     def set_fila_pid_devc(self):  #todo implementar
         pass
         # if self.fila_pid_apto.len() > 0:
@@ -240,7 +225,6 @@ class Scheduler:
                 return self.pcb[i]
         return None
 
-
     def clock(self):
         self.current_time += 1
 
@@ -251,170 +235,17 @@ class Scheduler:
         for i in range(len(self.pcb)):
             self.process_timeline[i].append(self.pcb[i].status)
 
-    # def get_process_status(self, order, time):
-    #     return self.process_timeline[order][time]
-
-    # def get_process_status(self, order):
-    #     return self.pcb[order].status
-
-    def set_process_availability(self):
-        if self.fila_pid_exec.len() > 0:
-            self.processor_available = False
-        else:
-            self.processor_available = True
-
-    def set_device_availability(self):
-        if self.fila_pid_devc.len() > 0:
-            self.device_available = False
-        else:
-            self.device_available = True
-
-
-    def execute(self):  # a cada unidade de tempo
-        if self.ts_counter > self.ts:
-            self.ts_counter = 0
-
-        self.set_process_availability()
-        self.set_device_availability()
-
-        # for i in range(len(self.pcb)):
-        #
-        #     self.set_process_availability()
-        #     self.set_device_availability()
-
-            # if self.processor_available:
-            #
-            #     if self.fila_pid_apto.len() > 0:
-            #         if self.pcb[i].tStart > 0:
-            #             self.pcb[i].status = executando
-            #             self.pcb[i].tStart -= 1
-            #             self.pid_has_processor = i  # ganhou o processador  # DEVE PASSAR PRA OUTRO i
-            #         elif self.pcb[i].tDevice > 0:
-            #             if self.device_available:
-            #                 self.pcb[i].status = dispositivo
-            #                 self.pid_has_device = i  # ganhou o dispositivo  # DEVE PASSAR PRA OUTRO i
-            #                 self.pcb[i].tDevice -= 1
-            #             else:  # se nao tem device disponivel, entao não é dele, já que ele agora é apto
-            #                 self.pcb[i].status = bloqueado  # DEVE PASSAR PRA OUTRO i
-            #         else:
-            #             if self.pcb[i].tEnd > 0:
-            #                 self.pcb[i].status = executando
-            #                 self.pcb[i].tEnd -= 1
-            #                 self.pid_has_processor = i  # ganhou o processador  # DEVE PASSAR PRA OUTRO i
-            #             else:
-            #                 self.pcb[i].status = fim
-            #
-            #
-            #
-            # elif self.pcb[i].status == executando:
-            #     if self.ts_counter < self.ts:  # ainda tem TS
-            #         if self.pcb[i].tStart > 0:
-            #             self.pcb[i].tStart -= 1  # DEVE PASSAR PRA OUTRO i
-            #         elif self.pcb[i].tDevice > 0 and self.pcb[i].tStart == 0:  # todo: device nada a ver com tstart q acabou
-            #             if self.device_available:
-            #                 self.pcb[i].status = dispositivo
-            #                 self.pid_has_device = i  # ganhou o dispositivo  # DEVE PASSAR PRA OUTRO i
-            #                 self.pcb[i].tDevice -= 1
-            #             else:  # se nao tem device disponivel, entao não é dele, já que ele agora é apto
-            #                 self.pcb[i].status = bloqueado  # DEVE PASSAR PRA OUTRO i
-            #         elif self.pcb[i].tEnd > 0 and self.pcb[i].tStart == 0:
-            #             self.pcb[i].tEnd -= 1  # DEVE PASSAR PRA OUTRO i
-            #         else:
-            #             self.pcb[i].status = fim
-            #     else:
-            #         self.pcb[i].status = apto
-            #         self.pid_has_processor = None  # liberou o processador
-            #
-            # if self.pcb[i].status in [apto, bloqueado, dispositivo]:
-            #     if self.pcb[i].tStart == 0:
-            #         if self.pcb[i].tDevice > 0:
-            #             if self.device_available:
-            #                 self.pcb[i].status = dispositivo
-            #                 self.pid_has_device = i  # ganhou o dispositivo  #todo: e na proxima já deve usar dispositivo ou ficar bloqueado
-            #                 self.pcb[i].tDevice -= 1
-            #             elif self.pid_has_device == i:  # dispositivo em uso pelo processo atual
-            #                 # permanece status dispositivo
-            #                 self.pcb[i].tDevice -= 1
-            #             else:  # muda para bloqueado e tenta na proxima
-            #                 self.pcb[i].status = bloqueado
-            #         else:
-            #             self.pcb[i].status = apto
-            #             self.pid_has_device = None  # liberou o dispositivo
-
-
-
-
-
-
-
-
-
-            # if self.processor_available:
-            #
-            #     if self.get_process_status(i) == apto:
-            #         if self.pcb[i].tStart > 0:
-            #             self.pcb[i].status = executando
-            #             self.pcb[i].tStart -= 1
-            #             self.pid_has_processor = i  # ganhou o processador
-            #         elif self.pcb[i].tDevice == 0 and self.pcb[i].tEnd > 0:
-            #             self.pcb[i].status = executando
-            #             self.pcb[i].tEnd -= 1
-            #             self.pid_has_processor = i  # ganhou o processador
-            #
-            #     if self.pcb[i].status == dispositivo:
-            #         if self.pcb[i].tDevice > 0:
-            #             self.pid_has_device = i  # ganhou o dispositivo  #todo: e na proxima já deve usar dispositivo ou ficar bloqueado
-            #             self.pcb[i].tDevice -= 1
-            #         elif self.pid_has_device == i:  # dispositivo em uso pelo processo atual
-            #             # permanece status dispositivo
-            #             self.pcb[i].tDevice -= 1
-            #         else:  # muda para bloqueado e tenta na proxima
-            #             self.pcb[i].status = bloqueado
-            #     else:
-            #         self.pcb[i].status = apto
-            #         self.pid_has_device = None  # liberou o dispositivo
-            #
-            #
-            # elif self.get_process_status(i) == executando:  # o current_id já é o seu
-            #     if self.pcb[i].tStart > 0:
-            #         if self.ts_counter < self.ts:
-            #             # self.pcb[i].status = executando  # já está executando
-            #             self.pcb[i].tStart -= 1
-            #         else:  # finalizou TS
-            #             self.pcb[i].status = apto  # todo: implementar outros status?
-            #             self.pid_has_processor = None  # perdeu o processador
-            #
-            #     elif self.pcb[i].tStart == 0:
-            #         self.pcb[i].status = apto  # todo: implementar outros status?
-            #         self.pid_has_processor = None  # liberou o processador
-            #
-            #     elif self.pcb[i].tDevice == 0 and self.pcb[i].tEnd > 0:
-            #         if self.ts_counter < self.ts:
-            #             self.pcb[i].status = executando
-            #             self.pcb[i].tEnd -= 1
-            #         else:  # finalizou TS
-            #             self.pcb[i].status = fim  # todo: implementar outros status? ou Fim?
-            #             self.pid_has_processor = None  # perdeu o processador
-            # # self.set_availability()
-            # if self.pcb[i].status in [apto, bloqueado, dispositivo]:
-            #     if self.pcb[i].tStart == 0:
-            #         if self.pcb[i].tDevice > 0:
-            #             if self.device_available:
-            #                 self.pcb[i].status = dispositivo
-            #                 self.pid_has_device = i  # ganhou o dispositivo  #todo: e na proxima já deve usar dispositivo ou ficar bloqueado
-            #                 self.pcb[i].tDevice -= 1
-            #             elif self.pid_has_device == i:  # dispositivo em uso pelo processo atual
-            #                 # permanece status dispositivo
-            #                 self.pcb[i].tDevice -= 1
-            #             else:  # muda para bloqueado e tenta na proxima
-            #                 self.pcb[i].status = bloqueado
-            #         else:
-            #             self.pcb[i].status = apto
-            #             self.pid_has_device = None  # liberou o dispositivo
-
-        if not self.processor_available:
-            self.ts_counter += 1
-
+    # def set_process_availability(self):
+    #     if self.fila_pid_exec.len() > 0:
+    #         self.processor_available = False
+    #     else:
+    #         self.processor_available = True
+    #
+    # def set_device_availability(self):
+    #     if self.fila_pid_devc.len() > 0:
+    #         self.device_available = False
+    #     else:
+    #         self.device_available = True
 
     def run(self):
         while self.current_time <= MAX_TIME:
@@ -422,27 +253,44 @@ class Scheduler:
             self.set_fila_pid_apto()
             self.set_fila_pid_exec()
             self.set_fila_pid_devc()
-            #self.execute()
             self.set_scheduler_timeline()
             self.set_process_timeline()
-
             # print per time unit
             print(self)
 
             self.clock()
 
+# ---------------------------------------------------------
 
+#Cenario 01
 p1 = Process(1, 3, 4, 2)
 p2 = Process(2, 2, 5, 1)
 p3 = Process(3, 3, 3, 2)
-# p1 = Process(0, 0, 1, 1)
-# p2 = Process(1, 0, 0, 0)
-# p3 = Process(2, 1, 0, 0)
-lista_de_processos = [p1, p2, p3]
-time_slice = 2
-s = Scheduler(1, time_slice, lista_de_processos)
-#print(s)
-s.run()
+lista_de_processos_cenario_01 = [p1, p2, p3]
+
+#Cenario 02
+p1 = Process(3, 0, 1, 1)
+p2 = Process(4, 0, 0, 0)
+p3 = Process(5, 1, 0, 0)
+lista_de_processos_cenario_02 = [p1, p2, p3]
+
+
+# TIME SLICE
+time_slice_2 = 2
+time_slice_4 = 4
+
+# ESCALONADOR
+s1 = Scheduler(1, time_slice_2, lista_de_processos_cenario_01)
+s2 = Scheduler(2, time_slice_4, lista_de_processos_cenario_02)
+
+# EXECUTAR O PROGRAMA
+
+s1.run()
+print("\n\n=============================================================\n\n")
+s2.run()
+
+
+#testes
 #print(s.process_timeline[0][10])
 # print(p1)
 # print(s.pcb[0])
