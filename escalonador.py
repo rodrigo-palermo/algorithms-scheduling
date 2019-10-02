@@ -1,12 +1,17 @@
+import copy
+
 # VARIÁVEIS GLOBAIS DOS PROCESSOS
 executando = 'x'
 apto = '.'
 dispositivo = 'd'
 bloqueado = 'b'
 fim = ' '
+livre = 'l'
 
 # VARIÁVEIS GLOBAIS DOS ESCALONADOR
 MAX_TIME = 20
+cpuTimeVar = 'T'
+dvcTimeVar = 'D'
 
 
 # CLASSES
@@ -42,6 +47,9 @@ class Process:
         self.timesList = times_list
         self.len = len(times_list)
 
+    def __str__(self):
+        return str(self.timesList)
+
 
 class Scheduler:
 
@@ -50,81 +58,52 @@ class Scheduler:
         self.ts = time_slice
         self.ts_counter = 0
         self.pcb = self.set_pcb(process_list)
+        self.pcb_buffer = copy.deepcopy(self.pcb)
+        self.len_bigger_process_time_list = self.len_bigger_process_time_list()
         self.current_time = 0
         self.log = []
         self.timeline = []
         self.process_timeline = []
+        self.set_scheduler_pcb_header()
+        self.pcb_header = '\nPid |' + self.pcb_times_header  # T D T ...\n'  # cabeçalho para impressao de tempos
+
+        # criar array com linha de tempo para cada processo conforme qtde de processos
         for i in range(len(self.pcb)):
             self.process_timeline.append([] * 1)
 
-        # Fila de PID para uso em fila de PID LIVRE
+        # Fila de PID LIVRE
         self.fila_pid_livre = self.init_fila_pid_livre(self.pcb)
 
-        # Fila de PID para uso em fila de PID APTO
+        # Fila de PID APTO
         self.fila_pid_apto = Fila()
         # ?Neste momento a fila de APTO será igual à de LIVRE
         # self.fila_pid_apto = self.fila_pid_livre
 
-        # Fila de PID para uso em fila de PID EXEC - SOMENTE 1 ELEMENTO
+        # Fila de PID EXEC - SOMENTE 1 ELEMENTO
         self.fila_pid_exec = Fila()
 
-        # Fila de PID para uso em fila de PID BLOQUEADO
+        # Fila de PID BLOQUEADO
         self.fila_pid_bloq = Fila()
 
-        # Fila de PID para uso em fila de PID DEVICE
+        # Fila de PID DEVICE
         self.fila_pid_devc = Fila()
 
-        # Fila de PID para uso em fila de PID FINALIZADO
+        # Fila de PID FINALIZADO
         self.fila_pid_finalizado = Fila()
 
     def set_pcb(self, process_list):
-        cols = 3  # [id,process_list,status]   #agora id e status são definidos no pcb do escalonador, e não no processo
+        cols = 4  # [id,process_list,status,time]  #agora id,status são definidos no pcb do escalonador, e não no processo
         pcb = []
         for i in range(len(process_list)):
             pcb.append([i] * cols)
         for row in range(len(process_list)):
             pcb[row][1] = process_list[row]
-            pcb[row][2] = None
+            pcb[row][2] = livre  # status inicial
+            pcb[row][3] = cpuTimeVar  # tempo de CPU no início
         return pcb
 
-    def __str__(self):
-        text = 'Escalonador: {}'.format(self.id)
-        text += '\n TS: {}'.format(self.ts)
-        text += '\nPid T D T\n'
-        row = 0
-        for process in self.pcb:
-            # print process
-            text += str(process)
-            # print process_timeline
-            for j in range(len(self.process_timeline[row])):
-                text += ' {}'.format(self.process_timeline[row][j])
-            text += '\n'
-            row += 1
-
-        # print timeline
-        text += '          '
-        for t in self.timeline:
-            text += ' {}'.format(t % 10)
-
-        # print FILAS
-        text += '\n FILA DE PID LIVRE: ' + str(self.fila_pid_livre)
-        text += '\n FILA DE PID  APTO: ' + str(self.fila_pid_apto)
-        text += '\n FILA DE PID  EXEC: ' + str(self.fila_pid_exec)
-        text += '\n FILA DE PID  BLOQ: ' + str(self.fila_pid_bloq)
-        text += '\n FILA DE PID  DEVC: ' + str(self.fila_pid_devc)
-        # TESTES
-        text += '\n FILA DE PID   FIM: ' + str(self.fila_pid_finalizado)
-        text += '\n        TS counter: ' + str(self.ts_counter)
-
-        text += '\n-------------------------------------------------\n'
-
-        return text
-
-    def keep_log(self, txt):
-        self.log.append(txt)
-
     def init_fila_pid_livre(self, pcb):
-        # Fila de PID para uso em fila de PID LIVRE
+        # Fila de PID LIVRE
         fila_pid = Fila()
         for i in range(len(pcb)):
             fila_pid.entra(pcb[i][0])  # pid
@@ -134,7 +113,7 @@ class Scheduler:
         if self.fila_pid_livre.len() > 0:
             pid = self.fila_pid_livre.first()
             process = self.get_process_by_pid(pid)
-            process[2] = apto  # somente para impressao???
+            process[2] = apto
             self.fila_pid_livre.sai()
             self.fila_pid_apto.entra(pid)
 
@@ -144,14 +123,19 @@ class Scheduler:
             if self.fila_pid_apto.len() > 0:
                 pid = self.fila_pid_apto.first()
                 process = self.get_process_by_pid(pid)
-                if True:  # if process.tem_tStart() or (not process.tem_tDevice() and process.tem_tEnd()):
+                if process[3] == cpuTimeVar and process[1].timesList[0] > 0:
                     if self.ts_counter < self.ts:  # tem TS  #Proc está livre, porém garante caso TS seja 0, o que não deveria ocorrer
                         self.fila_pid_apto.sai()
                         self.fila_pid_exec.entra(pid)
                         self.ts_counter += 1  # incrementa contador do TS
-                        self.pcb[2] = executando
-                        if process.len():  # .tem_tStart():
-                            process[1][0] -= 1  # process.tStart -= 1  # decrementa tStart # todo: implementar
+                        process[2] = executando #ou self.pcb[pid][2] = executando
+                        if process[1].len:  # .tem_tStart():
+                            process[1].timesList[0] -= 1  # process.tStart -= 1  # decrementa tStart # todo: implementar. A parte de baixo é aqui ou no próximo método?
+                            if process[1].timesList[0] == 0:  # acabou o tempo, retira da lista de tempos
+                                process[1].timesList.pop(0)
+                                if process[1].timesList[0] is not None:
+                                    process[3] = dvcTimeVar
+
                         # elif process.tem_tEnd():
                         #    process.tEnd -= 1  # decrementa tEnd
 
@@ -161,7 +145,7 @@ class Scheduler:
             self.continua_ou_troca_processo(process)
 
     def continua_ou_troca_processo(self, process):
-        pid = process.id
+        pid = process[0]
         # 1-CONTINUA NESTE TS NO PROXIMO CLOCK: se tem TS, se processo tem algum tempo pra executar tStart ou tEnd
         # 1-2 Incrementa TS
         # 1-1 Para tStart ou tEnd - fica na fila_EXEC
@@ -252,6 +236,24 @@ class Scheduler:
 
     def set_scheduler_timeline(self):
         self.timeline.append(self.current_time)
+        
+    def set_scheduler_pcb_header(self):
+        # imprime alternadamente T (cpu time) e D (device time) coforme ainda tenha tempo em algum processo
+        self.pcb_times_header = ''
+        maior = self.len_bigger_process_time_list
+        for i in range(maior):
+            if i % 2 == 0:  # cpuTime
+                self.pcb_times_header += ' ' + cpuTimeVar
+            else:
+                self.pcb_times_header += ' ' + dvcTimeVar
+        self.pcb_times_header += ' |'
+
+    def len_bigger_process_time_list(self):
+        maior = self.pcb[0][1].len
+        for i in range(len(self.pcb)):
+            if self.pcb[i][1].len > maior:
+                maior = self.pcb[i][1].len
+        return maior
 
     def set_process_timeline(self):
         for i in range(len(self.pcb)):
@@ -262,7 +264,7 @@ class Scheduler:
         while self.current_time <= MAX_TIME:
             self.set_fila_pid_apto()
             self.set_fila_pid_exec()
-            self.set_fila_pid_devc()
+            # self.set_fila_pid_devc()
             self.set_scheduler_timeline()
             self.set_process_timeline()
             # print or keep log per time unit
@@ -271,6 +273,59 @@ class Scheduler:
 
             self.clock()
 
+    def keep_log(self, txt):
+        self.log.append(txt)
+
+    def __str__(self):
+        text = 'Escalonador: {}'.format(self.id)
+        text += '\n TS: {}'.format(self.ts)
+        text += ' {}\n'.format(self.pcb_header)
+        # print header separator
+        text += '----+'
+        for i in range(self.len_bigger_process_time_list):
+            text += '--'
+        text += '-+'
+        for t in self.timeline:
+            text += '--'
+        text += '\n'
+        row = 0
+        for pcb_item in self.pcb_buffer:
+            # print pcb_item id
+            text += ' ' + str(pcb_item[0]) + '  |'
+            # print pcb_item times (BUFFER para mostrat tempos iniciais)
+            for i in range(self.len_bigger_process_time_list):
+                if pcb_item[1].len > i:
+                    text += ' ' + str(pcb_item[1].timesList[i])
+                else:
+                    text += '  '
+            # print process_timeline
+            text += ' |'
+            for j in range(len(self.process_timeline[row])):
+                text += ' {}'.format(self.process_timeline[row][j])
+            text += '\n'
+            row += 1
+
+        # print timeline
+        text += '       '
+        for i in range(self.len_bigger_process_time_list):
+            text += '  '
+        for t in self.timeline:
+            text += ' {}'.format(t % 10)
+
+        # print FILAS
+        text += '\n PID LIVRE: ' + str(self.fila_pid_livre)
+        text += '\n      APTO: ' + str(self.fila_pid_apto)
+        text += '\n      EXEC: ' + str(self.fila_pid_exec)
+        text += '\n      BLOQ: ' + str(self.fila_pid_bloq)
+        text += '\n      DEVC: ' + str(self.fila_pid_devc)
+        # TESTES
+        text += '\n       FIM: ' + str(self.fila_pid_finalizado)
+        text += '\nTS counter: ' + str(self.ts_counter)
+
+        text += '\n============================================================\n'
+
+        return text
+
 
 # ---------------------------------------------------------
 # TIME SLICE
@@ -278,9 +333,10 @@ time_slice_2 = 2
 time_slice_4 = 4
 
 # Cenario 01
-p1 = Process([3, 2, 2])
-p2 = Process([2, 2])
-lista_de_processos_cenario_01 = [p1, p2]
+p1 = Process([1, 2])
+p2 = Process([2, 3])
+p3 = Process([4, 5, 6])
+lista_de_processos_cenario_01 = [p1, p2, p3]
 s1 = Scheduler(1, 2, lista_de_processos_cenario_01)
 print(s1.pcb)
 
