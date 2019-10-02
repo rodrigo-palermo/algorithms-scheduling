@@ -89,7 +89,7 @@ class Scheduler:
         self.fila_pid_devc = Fila()
 
         # Fila de PID FINALIZADO
-        self.fila_pid_finalizado = Fila()
+        self.fila_pid_fim = Fila()
 
     def set_pcb(self, process_list):
         cols = 4  # [id,process_list,status,time]  #agora id,status são definidos no pcb do escalonador, e não no processo
@@ -99,7 +99,7 @@ class Scheduler:
         for row in range(len(process_list)):
             pcb[row][1] = process_list[row]
             pcb[row][2] = livre  # status inicial
-            pcb[row][3] = cpuTimeVar  # tempo de CPU no início
+            pcb[row][3] = cpuTimeVar  # marca tempo de CPU no início
         return pcb
 
     def init_fila_pid_livre(self, pcb):
@@ -113,17 +113,23 @@ class Scheduler:
         if self.fila_pid_livre.len() > 0:
             pid = self.fila_pid_livre.first()
             process = self.get_process_by_pid(pid)
-            process[2] = apto
-            self.fila_pid_livre.sai()
-            self.fila_pid_apto.entra(pid)
+            if process[1].timesList:# e se tem lista de tempos
+                process[2] = apto
+                self.fila_pid_livre.sai()
+                self.fila_pid_apto.entra(pid)
+            else:
+                process[2] = fim
+                self.fila_pid_livre.sai()
+                self.fila_pid_fim.entra(pid)
+                print(process)
 
     def set_fila_pid_exec(self):  # considera para uso do processador
 
         if self.fila_pid_exec.len() == 0:  # processador livre
-            if self.fila_pid_apto.len() > 0:
+            if self.fila_pid_apto.len() > 0:  # tem apto
                 pid = self.fila_pid_apto.first()
                 process = self.get_process_by_pid(pid)
-                if process[3] == cpuTimeVar and process[1].timesList[0] > 0:
+                if process[3] == cpuTimeVar and process[1].timesList[0] is not None and process[1].timesList[0] > 0:
                     if self.ts_counter < self.ts:  # tem TS  #Proc está livre, porém garante caso TS seja 0, o que não deveria ocorrer
                         self.fila_pid_apto.sai()
                         self.fila_pid_exec.entra(pid)
@@ -136,8 +142,6 @@ class Scheduler:
                                 if process[1].timesList[0] is not None:
                                     process[3] = dvcTimeVar
 
-                        # elif process.tem_tEnd():
-                        #    process.tEnd -= 1  # decrementa tEnd
 
         else:  # processador executando
             pid = self.fila_pid_exec.first()
@@ -150,7 +154,7 @@ class Scheduler:
         # 1-2 Incrementa TS
         # 1-1 Para tStart ou tEnd - fica na fila_EXEC
         if self.ts_counter < self.ts:  # tem TS
-            if process.tem_tStart() or process.tem_tEnd():
+            if True: #process.tem_tStart() or process.tem_tEnd() # todo: implementar
                 self.ts_counter += 1  # incrementa contador do TS
                 if process.tem_tStart():
                     process.tStart -= 1  # decrementa tStart
@@ -165,7 +169,7 @@ class Scheduler:
                 self.fila_pid_exec.sai()  # libera o processador
                 if process.finalizou_processo():  # nao tem tDevice
                     process[2] = fim
-                    self.fila_pid_finalizado.entra(pid)
+                    self.fila_pid_fim.entra(pid)
                 elif process.tStart > 0 or process.tEnd > 0:
                     self.fila_pid_apto.entra(pid)
                     process[2] = apto
@@ -184,7 +188,7 @@ class Scheduler:
             self.fila_pid_exec.sai()  # libera o processador
             if process.finalizou_processo():  # nao tem tDevice
                 process[2] = fim
-                self.fila_pid_finalizado.entra(pid)
+                self.fila_pid_fim.entra(pid)
             elif process.tStart > 0:
                 self.fila_pid_apto.entra(pid)
                 process[2] = apto
@@ -211,7 +215,7 @@ class Scheduler:
                         self.fila_pid_apto.entra(pid)
                         process[2] = apto
                     else:
-                        self.fila_pid_finalizado.entra(pid)
+                        self.fila_pid_fim.entra(pid)
                         process[2] = fim
                 else:
                     process.tDevice -= 1
@@ -263,7 +267,7 @@ class Scheduler:
 
         while self.current_time <= MAX_TIME:
             self.set_fila_pid_apto()
-            self.set_fila_pid_exec()
+            #self.set_fila_pid_exec()
             # self.set_fila_pid_devc()
             self.set_scheduler_timeline()
             self.set_process_timeline()
@@ -319,7 +323,7 @@ class Scheduler:
         text += '\n      BLOQ: ' + str(self.fila_pid_bloq)
         text += '\n      DEVC: ' + str(self.fila_pid_devc)
         # TESTES
-        text += '\n       FIM: ' + str(self.fila_pid_finalizado)
+        text += '\n       FIM: ' + str(self.fila_pid_fim)
         text += '\nTS counter: ' + str(self.ts_counter)
 
         text += '\n============================================================\n'
@@ -336,7 +340,8 @@ time_slice_4 = 4
 p1 = Process([1, 2])
 p2 = Process([2, 3])
 p3 = Process([4, 5, 6])
-lista_de_processos_cenario_01 = [p1, p2, p3]
+p4 = Process([])  # para testar com lista de tempos vazia (não passa para fila de aptos, mas para de fim)
+lista_de_processos_cenario_01 = [p1, p2, p3, p4]
 s1 = Scheduler(1, 2, lista_de_processos_cenario_01)
 print(s1.pcb)
 
