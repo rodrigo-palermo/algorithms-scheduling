@@ -168,10 +168,15 @@ class Scheduler:
                         process[2] = fim
                         self.fila_pid_fim.entra(pid)
                     else:
-                        self.fila_pid_livre.entra(pid)
-                        process[2] = livre
-                        process[3] = dvcTimeVar
-                    
+                        if self.fila_pid_devc == 0:
+                            self.fila_pid_devc.entra(pid)
+                            process[2] = dispositivo  # AO INVES DO LIVRE???
+                            process[3] = dvcTimeVar
+                        else:
+                            self.fila_pid_bloq.entra(pid)
+                            process[2] = bloq
+                            process[3] = dvcTimeVar
+
                 elif not process[1].timesList:
                     self.ts_counter = 0
                     self.fila_pid_exec.sai()
@@ -187,11 +192,17 @@ class Scheduler:
                 elif process[1].timesList and process[1].timesList[0] == 0:
                     self.ts_counter = 0
                     self.fila_pid_exec.sai()
-                    self.fila_pid_livre.entra(pid)
-                    process[2] = livre
+
                     process[1].timesList.pop(0)  # ???
                     if process[1].timesList:
-                        process[3] = dvcTimeVar
+                        if self.fila_pid_devc == 0:
+                            self.fila_pid_devc.entra(pid)
+                            process[2] = dispositivo  # AO INVES DO LIVRE???
+                            process[3] = dvcTimeVar
+                        else:
+                            self.fila_pid_bloq.entra(pid)
+                            process[2] = bloq
+                            process[3] = dvcTimeVar
                 elif not process[1].timesList:
                     self.ts_counter = 0
                     self.fila_pid_exec.sai()
@@ -233,15 +244,18 @@ class Scheduler:
             if process[1].timesList and process[1].timesList[0] > 0:
                 process[1].timesList[0] -= 1
             elif process[1].timesList and process[1].timesList[0] == 0:
-                self.ts_counter = 0
                 self.fila_pid_devc.sai()
-                self.fila_pid_livre.entra(pid)
-                process[2] = livre
                 process[1].timesList.pop(0)  # ???
                 if process[1].timesList:
-                    process[3] = cpuTimeVar
+                    if self.fila_pid_devc == 0:
+                        self.fila_pid_devc.entra(pid)
+                        process[2] = apto  # AO INVES DO LIVRE???
+                        process[3] = cpuTimeVar
+                    else:
+                        self.fila_pid_bloq.entra(pid)
+                        process[2] = bloq
+                        process[3] = dvcTimeVar
             elif not process[1].timesList:
-                self.ts_counter = 0
                 self.fila_pid_devc.sai()
                 self.fila_pid_fim.entra(pid)
                 process[2] = fim
