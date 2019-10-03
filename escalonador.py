@@ -9,6 +9,8 @@ fim = ' '
 livre = 'l'
 cpuTimeVar = 'T'
 dvcTimeVar = 'D'
+
+
 # MAX_TIME = 50
 
 # CLASSES
@@ -70,7 +72,7 @@ class Scheduler:
 
         # Fila de PID LIVRE
         self.fila_pid_livre = self.init_fila_pid_livre(self.pcb)
-        #self.fila_pid_livre = Fila()
+        # self.fila_pid_livre = Fila()
 
         # Fila de PID APTO
         self.fila_pid_apto = Fila()
@@ -110,31 +112,31 @@ class Scheduler:
             fila_pid.entra(pcb[i][0])  # pid
         return fila_pid
 
-    def set_fila_pid_apto_ou_bloq(self):   # considera que aptos são para uso do processador somente?
+    def set_fila_pid_apto_ou_bloq(self):  # considera que aptos são para uso do processador somente?
 
-        #algum LOOP antes do código abaixo para veirifcar todos os livres e já alterar em um clock?
-        
-        if self.fila_pid_livre.len() > 0:
-            pid = self.fila_pid_livre.first()
-            process = self.get_process_by_pid(pid)
-            self.fila_pid_livre.sai()
-            if process[1].timesList and process[1].timesList[0] > 0:
-                if process[3] == cpuTimeVar:# se tem lista de tempos # todo: confirmar se tempo 0 já foi retirado da fila
-                    process[2] = apto
-                    self.fila_pid_apto.entra(pid)
-                elif process[3] == dvcTimeVar:
-                    if self.fila_pid_devc.len() == 0:
-                        process[2] = dispositivo
-                        self.fila_pid_devc.entra(pid)
-                    else:
-                        process[2] = bloq
-                        self.fila_pid_bloq.entra(pid)
+        # LOOP
+        iter = len(self.pcb) - self.fila_pid_fim.len()
+        for i in range(iter):
+            if self.fila_pid_livre.len() > 0:
+                pid = self.fila_pid_livre.first()
+                process = self.get_process_by_pid(pid)
+                self.fila_pid_livre.sai()
+                if process[1].timesList and process[1].timesList[0] > 0:
+                    if process[3] == cpuTimeVar:  # se tem lista de tempos # todo: confirmar se tempo 0 já foi retirado da fila
+                        process[2] = apto
+                        self.fila_pid_apto.entra(pid)
+                    elif process[3] == dvcTimeVar:
+                        if self.fila_pid_devc.len() == 0:
+                            process[2] = dispositivo
+                            self.fila_pid_devc.entra(pid)
+                        else:
+                            process[2] = bloq
+                            self.fila_pid_bloq.entra(pid)
 
-            else: # se inicia já sem tempos, vai para fim  # todo: confirmar se só neste caso ou se entra pid com tempo 0
-                process[2] = fim
-                self.fila_pid_fim.entra(pid)
-        
-        
+                else:  # se inicia já sem tempos, vai para fim  # todo: confirmar se só neste caso ou se entra pid com tempo 0
+                    process[2] = fim
+                    self.fila_pid_fim.entra(pid)
+
     def set_fila_pid_exec(self):  # considera para uso do processador
 
         if self.fila_pid_exec.len() == 0:  # processador livre
@@ -148,10 +150,6 @@ class Scheduler:
                 process[1].timesList[0] -= 1
                 process[2] = executando  # ou self.pcb[pid][2] = executando
 
-        # elif self.fila_pid_exec.len() == 0:  # processador livre
-        #     if self.fila_pid_apto.len() == 0:  # nao tem apto
-        #         pass
-
         elif self.fila_pid_exec.len() > 0:  # processador executando
             pid = self.fila_pid_exec.first()
             process = self.get_process_by_pid(pid)
@@ -163,16 +161,11 @@ class Scheduler:
                 elif process[1].timesList and process[1].timesList[0] == 0:
                     self.ts_counter = 0
                     self.fila_pid_exec.sai()
-                    process[1].timesList.pop(0)  #???  e para onde vai? Depende dos seus tempos  # Colocar em outra parte do codigo?
+                    process[1].timesList.pop(0)  # ???  e para onde vai? Depende dos seus tempos  # Colocar em outra parte do codigo?
                     if not process[1].timesList:
                         process[2] = fim
                         self.fila_pid_fim.entra(pid)
                     else:
-                        if self.fila_pid_devc == 0:
-                            self.fila_pid_devc.entra(pid)
-                            process[2] = dispositivo  # AO INVES DO LIVRE???
-                            process[3] = dvcTimeVar
-                        else:
                             self.fila_pid_bloq.entra(pid)
                             process[2] = bloq
                             process[3] = dvcTimeVar
@@ -192,34 +185,20 @@ class Scheduler:
                 elif process[1].timesList and process[1].timesList[0] == 0:
                     self.ts_counter = 0
                     self.fila_pid_exec.sai()
+                    process[1].timesList.pop(0)  # ???  e para onde vai? Depende dos seus tempos  # Colocar em outra parte do codigo?
+                    if not process[1].timesList:
+                        process[2] = fim
+                        self.fila_pid_fim.entra(pid)
+                    else:
+                        self.fila_pid_bloq.entra(pid)
+                        process[2] = bloq
+                        process[3] = dvcTimeVar
 
-                    process[1].timesList.pop(0)  # ???
-                    if process[1].timesList:
-                        if self.fila_pid_devc == 0:
-                            self.fila_pid_devc.entra(pid)
-                            process[2] = dispositivo  # AO INVES DO LIVRE???
-                            process[3] = dvcTimeVar
-                        else:
-                            self.fila_pid_bloq.entra(pid)
-                            process[2] = bloq
-                            process[3] = dvcTimeVar
                 elif not process[1].timesList:
                     self.ts_counter = 0
                     self.fila_pid_exec.sai()
                     self.fila_pid_fim.entra(pid)
                     process[2] = fim
-
-        #     ################################################################
-        #     if process[1].timesList and process[1].timesList[0] == 0:  # acabou o tempo, retira da lista de tempos
-        #         process[1].timesList.pop(0)
-        #         if process[1].timesList:
-        #             process[3] = dvcTimeVar  # e no proximo vai para fila de bloq ou device?
-        #         else:
-        #             process[3] = livre  # e na próxima vai para fila fim?
-        #     ################################################################
-        #
-        # if not process[1].timesList:
-        #     process[2] = fim
 
     def set_fila_pid_devc(self):  # todo implementar
 
@@ -233,10 +212,6 @@ class Scheduler:
                 process[1].timesList[0] -= 1
                 process[2] = dispositivo
 
-        # elif self.fila_pid_devc.len() == 0:  # dispositivo livre
-        #     if self.fila_pid_bloq.len() == 0:  # nao tem bloqueado esperando dispositivo
-        #         pass
-
         elif self.fila_pid_devc.len() > 0:  # dispositivo ocupado
             pid = self.fila_pid_devc.first()
             process = self.get_process_by_pid(pid)
@@ -244,22 +219,21 @@ class Scheduler:
             if process[1].timesList and process[1].timesList[0] > 0:
                 process[1].timesList[0] -= 1
             elif process[1].timesList and process[1].timesList[0] == 0:
+                #self.ts_counter = 0
                 self.fila_pid_devc.sai()
-                process[1].timesList.pop(0)  # ???
-                if process[1].timesList:
-                    if self.fila_pid_devc == 0:
-                        self.fila_pid_devc.entra(pid)
-                        process[2] = apto  # AO INVES DO LIVRE???
-                        process[3] = cpuTimeVar
-                    else:
-                        self.fila_pid_bloq.entra(pid)
-                        process[2] = bloq
-                        process[3] = dvcTimeVar
+                process[1].timesList.pop(0)  # ???  e para onde vai? Depende dos seus tempos  # Colocar em outra parte do codigo?
+                if not process[1].timesList:
+                    process[2] = fim
+                    self.fila_pid_fim.entra(pid)
+                else:
+                    self.fila_pid_apto.entra(pid)
+                    process[2] = apto
+                    process[3] = cpuTimeVar
             elif not process[1].timesList:
+                #self.ts_counter = 0
                 self.fila_pid_devc.sai()
                 self.fila_pid_fim.entra(pid)
                 process[2] = fim
-
 
     def get_process_by_pid(self, pid):
         for i in range(len(self.pcb)):
@@ -272,7 +246,7 @@ class Scheduler:
 
     def set_scheduler_timeline(self):
         self.timeline.append(self.current_time)
-        
+
     def set_scheduler_pcb_header(self):
         # imprime alternadamente T (cpu time) e D (device time) coforme ainda tenha tempo em algum processo
         self.pcb_times_header = ''
@@ -372,13 +346,13 @@ class Scheduler:
         # print FILAS
         text += '\n\n      FILA | PID'
         text += '\n   --------+--------'
-        text += '\n LIVRE ('+livre+') | ' + str(self.fila_pid_livre)
-        text += '\n  APTO ('+apto+') | ' + str(self.fila_pid_apto)
-        text += '\n  EXEC ('+executando+') | ' + str(self.fila_pid_exec)
-        text += '\n  BLOQ ('+bloq+') | ' + str(self.fila_pid_bloq)
-        text += '\n  DEVC ('+dispositivo+') | ' + str(self.fila_pid_devc)
+        text += '\n LIVRE (' + livre + ') | ' + str(self.fila_pid_livre)
+        text += '\n  APTO (' + apto + ') | ' + str(self.fila_pid_apto)
+        text += '\n  EXEC (' + executando + ') | ' + str(self.fila_pid_exec)
+        text += '\n  BLOQ (' + bloq + ') | ' + str(self.fila_pid_bloq)
+        text += '\n  DEVC (' + dispositivo + ') | ' + str(self.fila_pid_devc)
         # TESTES
-        text += '\n   FIM ('+fim+') | ' + str(self.fila_pid_fim)
+        text += '\n   FIM (' + fim + ') | ' + str(self.fila_pid_fim)
         text += '\nTS counter | ' + str(self.ts_counter)
 
         text += '\n============================================================\n'
@@ -409,44 +383,34 @@ p1 = Process(1, )
 p2 = Process(2, 2, 2, 1)
 p3 = Process(3, 3, 2, 2)
 lista_de_processos_cenario_01 = [p1, p2, p3]
-
 #Cenario 02
 p1 = Process(3, 0, 1, 1)
 p2 = Process(4, 0, 0, 0)
 p3 = Process(5, 1, 0, 0)
 lista_de_processos_cenario_02 = [p1, p2, p3]
-
 #Cenario 03
 p1 = Process(1, 3, 0, 2)
 p2 = Process(2, 2, 0, 1)
 p3 = Process(3, 3, 0, 2)
 lista_de_processos_cenario_03 = [p1, p2, p3]
-
 # TIME SLICE
 time_slice_2 = 2
 time_slice_4 = 4
-
 # ESCALONADOR
 s1 = Scheduler(1, time_slice_2, lista_de_processos_cenario_01)
 s2 = Scheduler(2, time_slice_4, lista_de_processos_cenario_02)
 s3 = Scheduler(3, time_slice_2, lista_de_processos_cenario_03)
-
 # EXECUTAR O PROGRAMA
-
 # s1.run()
 print("\n\n=============================================================\n\n")
 #s2.run()
-
 #s1.run()
 #print(s1.log[MAX_TIME])
-
-
 #testes
 #print(s.process_timeline[0][10])
 # print(p1)
 # print(s.pcb[0])
 # print(s.pcb[0].tStart)
-
 # fila_pid_apto = Fila()
 # fila_pid_apto.entra(1)
 # fila_pid_apto.entra(2)
