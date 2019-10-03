@@ -1,4 +1,10 @@
 import copy
+import time
+import sys
+
+movement = True
+refresh_rate = 0.5
+debbug = False
 
 # VARIÁVEIS GLOBAIS DOS ESCALONADOR
 executando = 'x'
@@ -279,10 +285,22 @@ class Scheduler:
             self.set_scheduler_timeline()
             self.set_process_timeline()
             # print or keep log per time unit
-            print(self)
+            #print(self)
+
+            if movement:
+                time.sleep(refresh_rate)
+                sys.stdout.write("%s" % self)
+                sys.stdout.flush()
+            
+            
+            if debbug:
+                input()
+            
             # self.keep_log(self.__str__())
 
             self.clock()
+        if not movement:
+            print(self)
 
     def keep_log(self, txt):
         self.log.append(txt)
@@ -353,7 +371,7 @@ class Scheduler:
         text += '\n  DEVC (' + dispositivo + ') | ' + str(self.fila_pid_devc)
         # TESTES
         text += '\n   FIM (' + fim + ') | ' + str(self.fila_pid_fim)
-        text += '\nTS counter | ' + str(self.ts_counter)
+        text += '\nTS counter | ' + str(self.ts_counter) + '/' + str(self.ts)
 
         text += '\n============================================================\n'
 
@@ -372,7 +390,7 @@ p1 = Process([1, 2])
 p2 = Process([2, 3])
 p3 = Process([4, 5, 6])
 p4 = Process([])  # para testar com lista de tempos vazia (não passa para fila de aptos, mas para de fim)
-lista_de_processos_cenario_01 = [p0, p1, p2, p3]
+lista_de_processos_cenario_01 = [p0, p1, p2, p4, p3]
 s1 = Scheduler(1, 2, lista_de_processos_cenario_01)
 # print(s1.pcb)
 
