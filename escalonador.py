@@ -117,7 +117,7 @@ class Scheduler:
             process = self.get_process_by_pid(pid)
             self.fila_pid_livre.sai()
             if process[1].timesList and process[1].timesList[0] > 0:
-                if process[3] == cpuTimeVar:# se tem lista de tempos # todo: confirmar se tempo 0, já foi retirado da fila
+                if process[3] == cpuTimeVar:# se tem lista de tempos # todo: confirmar se tempo 0 já foi retirado da fila
                     process[2] = apto
                     self.fila_pid_apto.entra(pid)
                 elif process[3] == dvcTimeVar:
@@ -278,6 +278,7 @@ class Scheduler:
 
         while self.fila_pid_fim.len() < len(self.pcb):  # self.current_time <= MAX_TIME:
             self.set_fila_pid_apto_ou_bloq()
+
             self.set_fila_pid_exec()
             self.set_fila_pid_devc()
             self.set_scheduler_timeline()
@@ -350,13 +351,13 @@ class Scheduler:
         # print FILAS
         text += '\n\n      FILA | PID'
         text += '\n   --------+--------'
-        text += '\n     LIVRE | ' + str(self.fila_pid_livre)
-        text += '\n      APTO | ' + str(self.fila_pid_apto)
-        text += '\n      EXEC | ' + str(self.fila_pid_exec)
-        text += '\n      BLOQ | ' + str(self.fila_pid_bloq)
-        text += '\n      DEVC | ' + str(self.fila_pid_devc)
+        text += '\n LIVRE ('+livre+') | ' + str(self.fila_pid_livre)
+        text += '\n  APTO ('+apto+') | ' + str(self.fila_pid_apto)
+        text += '\n  EXEC ('+executando+') | ' + str(self.fila_pid_exec)
+        text += '\n  BLOQ ('+bloq+') | ' + str(self.fila_pid_bloq)
+        text += '\n  DEVC ('+dispositivo+') | ' + str(self.fila_pid_devc)
         # TESTES
-        text += '\n       FIM | ' + str(self.fila_pid_fim)
+        text += '\n   FIM ('+fim+') | ' + str(self.fila_pid_fim)
         text += '\nTS counter | ' + str(self.ts_counter)
 
         text += '\n============================================================\n'
