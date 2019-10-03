@@ -112,6 +112,8 @@ class Scheduler:
 
     def set_fila_pid_apto_ou_bloq(self):   # considera que aptos são para uso do processador somente?
 
+        #algum LOOP antes do código abaixo para veirifcar todos os livres e já alterar em um clock?
+        
         if self.fila_pid_livre.len() > 0:
             pid = self.fila_pid_livre.first()
             process = self.get_process_by_pid(pid)
@@ -131,7 +133,8 @@ class Scheduler:
             else: # se inicia já sem tempos, vai para fim  # todo: confirmar se só neste caso ou se entra pid com tempo 0
                 process[2] = fim
                 self.fila_pid_fim.entra(pid)
-
+        
+        
     def set_fila_pid_exec(self):  # considera para uso do processador
 
         if self.fila_pid_exec.len() == 0:  # processador livre
@@ -160,11 +163,15 @@ class Scheduler:
                 elif process[1].timesList and process[1].timesList[0] == 0:
                     self.ts_counter = 0
                     self.fila_pid_exec.sai()
-                    self.fila_pid_livre.entra(pid)
-                    process[2] = livre
-                    process[1].timesList.pop(0)  #???
-                    if process[1].timesList:
+                    process[1].timesList.pop(0)  #???  e para onde vai? Depende dos seus tempos  # Colocar em outra parte do codigo?
+                    if not process[1].timesList:
+                        process[2] = fim
+                        self.fila_pid_fim.entra(pid)
+                    else:
+                        self.fila_pid_livre.entra(pid)
+                        process[2] = livre
                         process[3] = dvcTimeVar
+                    
                 elif not process[1].timesList:
                     self.ts_counter = 0
                     self.fila_pid_exec.sai()
